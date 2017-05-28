@@ -82,18 +82,15 @@ class GUI(object):
         self.idx = 0
         self.data = bagreader.data
         self.fig, self.ax = plt.subplots()
-        #self.ax.set_xlim([-3,3])
-        #self.ax.set_ylim([-3,3])
-        #self.ax.set_xlim([-1.5,0.5])
-        #self.ax.set_ylim([-1.5,1.5])
+        self.ax.set_xlim([-10,10])
+        self.ax.set_ylim([-10,10])
         self.ax.get_xaxis().set_visible(False)
         self.ax.get_yaxis().set_visible(False)
         axprev = plt.axes([0.7, 0.02, 0.1, 0.055])
         axnext = plt.axes([0.81, 0.02, 0.1, 0.055])
-        self.a = -0.63
+        self.a = 0.63
         tmp = tf.transformations.euler_matrix(0.0, 0.0, self.a)
         tmp[0,3] = 0.15
-        tmp[1,3] = 1
         self.scan_base = np.matrix(tmp)
         self.init_pose = np.matrix([[0],[0],[0],[1]])
 
@@ -116,18 +113,11 @@ class GUI(object):
     def press(self, event):
         if event.key == 'left':
             self.idx += 1
-            #self.a += 0.01
-            #tmp = tf.transformations.euler_matrix(0.0, 0.0, self.a)
-            #print self.a
-            #tmp[0,3] = 0.15
-            #self.scan_base = np.matrix(tmp)
-            #self.init_pose = np.matrix([[0],[0],[0],[1]])
-
             self.update()
+            
         elif event.key == 'right':
-            for i in range(1000):
-                self.idx += 1
-                self.update()          
+            self.idx += 1
+            self.update()          
 
     def update(self):
         try:
@@ -135,9 +125,9 @@ class GUI(object):
             self.odom_show.remove()
         except:
             pass
+        print self.idx
         scan = self.data[self.idx][0]
         odom = np.matrix(self.data[self.idx][1])
-        odom[0:2,3] = 0
         scan_size = scan.shape[0]
         scan = scan.transpose()
         tmp = np.zeros((1, scan_size))
@@ -146,6 +136,7 @@ class GUI(object):
         scan = np.vstack([scan, tmp])
         scan = np.matrix(scan)
         scan = odom*self.scan_base*scan
+        scan = np.array(scan)
         curp = odom*self.init_pose 
         v = np.matrix([[1],[0]])
         v= odom[0:2,0:2]*v
@@ -154,6 +145,6 @@ class GUI(object):
         self.curscan_show = self.ax.scatter(scan[0,:],scan[1,:],c='r', s=10)
         plt.draw()
 
-if __name__="__main__":
-    bagreader = BagReader('h1.bag', '/Rulo/laser_scan', '/Rulo/odom',80,800)
-#gui = GUI(bagreader)
+if __name__ == "__main__":
+    bagreader = BagReader('h1.bag', 'scan', 'odom',0,800)
+    gui = GUI(bagreader)

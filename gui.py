@@ -1,8 +1,6 @@
 #!/usr/bin/python
 # coding: UTF-8
 
-
-
 from pyqtgraph.Qt import QtCore, QtGui
 import numpy as np
 import pyqtgraph as pg
@@ -12,83 +10,108 @@ import sys
 import time
 import threading
 
+
+class RobotItem(QtGui.QGraphicsItem):
+    """a sample robot item"""
+    def __init__(self):
+        super(RobotItem, self).__init__()
+        #self.setFlag(QtGui.QGraphicsItem.ItemIsMovable)
+        self.setCacheMode(QtGui.QGraphicsItem.DeviceCoordinateCache)
+        self.setZValue(1)
+
+    def boundingRect(self):
+        adjust = 2.0
+        return QtCore.QRectF(-10 - adjust, -10 - adjust, 20 + adjust,
+                20 + adjust)
+
+    def paint(self, painter, option, widget):
+        #Draw a sample robot
+        pen = QtGui.QPen()
+        pen.setWidth(1);
+        pen.setBrush(QtCore.Qt.blue)
+        painter.setPen(pen)
+        painter.setBrush(QtCore.Qt.NoBrush)
+        painter.drawEllipse(QtCore.QPointF(0.0, 0.0), 5, 5)
+        painter.drawLine(0, 0, 5, 0)
+
+
 class LSLAMGUI(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
-        
+        self.q = Queue.Queue()
+
     def run(self):
+        #Create qtwindow
         app = QtGui.QApplication([])
         w = pg.GraphicsWindow()
         w.show()
         w.resize(800,800)
         w.setWindowTitle("viewer")
+        #Create ViewBox
         vb = w.addViewBox()
-        self.img = pg.ImageItem(np.zeros((400,400)))
-        self.img.setImage(np.random.rand(400,400))
         ## lock the aspect ratio
         vb.setAspectLocked(True)
-        self.plt = pg.PlotItem()
-
-        self.plt.plot(np.random.normal(size=100), pen=(255,0,0), name="Red curve")
-
-        vb.addItem(self.img)
-        #self.plt.setParentItem(self.img)
-        #self.plt.setZValue(10)
-
-        #vb.addItem(self.plt)
-        #self.img.setParentItem(self.plt)
-        #self.img.setZValue(-10)
-
-        ## make plot with a line drawn in
-        #self.plt = pg.PlotItem()
-        #view.addItem(self.plt)
-        ### Create image item
-        #self.img = pg.ImageItem(np.zeros((400,400)))
-        #self.plt.addItem(self.img)
-        #view.addItem(self.plt)
-        #self.img.setImage(np.random.rand(400,400))
-        
-
         ## Set initial view bounds
         vb.setRange(QtCore.QRectF(0, 0, 400, 400))
-        
+
+        #Create ImageItem for map
+        self.img = pg.ImageItem(np.zeros((400,400)))
+        vb.addItem(self.img)
+
+        ## Set image level
         self.img.setLevels([0, 1])
+
+        #Create ScatterPlotItem for scan data 
+        self.sct = pg.ScatterPlotItem(pen = pg.mkPen(None), 
+                                      brush = pg.mkBrush("g"), 
+                                      size =5, 
+                                      antialias = False)
+        self.sct.setParentItem(self.img)
+
+        #Create RobotItem(custom) for showing robot pose 
+        self.robot = RobotItem()
+        self.robot.setParentItem(self.img)
 
         #Set timer
         timer = pg.QtCore.QTimer()
         timer.timeout.connect(self.update)
         timer.start(30)
-        
-        #Data queue
-        self.q = Queue.Queue()
-        
-        self.robotpose = pg.ArrowItem(angle=90,pos=(200,200))
-        self.robotpose.setParentItem(self.img)
 
-        ## Start Qt event loop unless running in interactive mode or using pyside.
-        if __name__ == '__main__':
-            import sys
-            if (sys.flags.interactive != 1) or not hasattr(QtCore, 'PYQT_VERSION'):
-                QtGui.QApplication.instance().exec_()
+        import sys
+        if (sys.flags.interactive != 1) or not hasattr(QtCore, 'PYQT_VERSION'):
+            QtGui.QApplication.instance().exec_()
               
     def update(self):
         try:
-            data, pose = self.q.get(block=False)
+            #remove previous laser scan data
+            self.sct.clear()
+            #Check is there any new data in queue
+            data, pose, newscan = self.q.get(block=False)
+            self.q.queue.clear()
+            #update map
             self.img.setImage(data)
-            self.robotpose.setRotation(pose[2])
-            self.robotpose.setPos(pose[0],pose[1])
-        except:
+            #update robot pose
+            self.robot.setRotation(pose[2])
+            self.robot.setPos(pose[0],pose[1])
+            #update laser scan
+            #spots = [{'pos': pos} for pos in newscan]
+            spots = [{'pos': list(newscan[i,:])} for i in range(newscan.shape[0])]
+            self.sct.addPoints(spots)
+        except Queue.Empty:
             pass
 
-    def setdata(self, mapdata, robotpose):
-        self.q.put( (mapdata,robotpose) )
+    def setdata(self, mapdata, robotpose, newscan):
+        self.q.put( (mapdata,robotpose, newscan) )
         pass
 
-gui = LSLAMGUI()
-gui.start()
-
-for i in range(1000):
-    time.sleep(0.1)
-    gui.setdata(np.random.rand(400,400), [i,i,i])
+if __name__ == "__main__":
+    gui = LSLAMGUI()
+    gui.run()
+    print 'sample gui test'
+    for i in range(1000):
+        time.sleep(0.1)
+        newscan = np.zeros((10,2))
+        newscan.fill(0.1)
+        gui.setdata(np.random.rand(400,400), [0,0,i], newscan)
 
     
