@@ -6,7 +6,7 @@ import numpy as np
 
 
 class CostMap():
-    def __init__(self, size =(400,400), original_point = (200,200), resolution = 0.05):
+    def __init__(self, size =(400,400), original_point = (300,200), resolution = 0.1):
         self.map_data = np.zeros(size)
         self.prob_data = np.zeros(size)
         self.prob_data.fill(0.5)
@@ -21,10 +21,6 @@ class CostMap():
         world_point = (map_point - np.tile(self.original_point,(map_point.shape[0],1)) ) * self.resolution
         return world_point
 
-
-    #def setCostMap(self, map_point, cost):
-    #    self.map_data[int(map_point[0]), int(map_point[1])] = cost
-
     def updateCostMap(self, map_point, val):
         self.map_data[int(map_point[0]), int(map_point[1])] += val
         new_val = self.map_data[int(map_point[0]), int(map_point[1])]
@@ -32,8 +28,25 @@ class CostMap():
         new_prob = odds/(1+odds)
         self.prob_data[int(map_point[0]), int(map_point[1])] = new_prob
 
-    def getCostMap(self, map_point):
-        return self.map_data[map_point[0], map_point[1]]
+    def getMapValueWithDerivatives(self, map_point_float):
+        factors0 = map_point_float[0] - float(int(map_point_float[0]))
+        factors1 = map_point_float[1] - float(int(map_point_float[1]))
+        p0 = self.prob_data[int(map_point_float[0]), int(map_point_float[1])]
+        p1 = self.prob_data[int(map_point_float[0]), int(map_point_float[1]+1)]
+        p2 = self.prob_data[int(map_point_float[0]+1), int(map_point_float[1])]
+        p3 = self.prob_data[int(map_point_float[0]+1), int(map_point_float[1]+1)]
+        dx1 = p0 - p1
+        dx2 = p2 - p3
+        dy1 = p0 - p2
+        dy2 = p1 - p3
+        xFacInv = 1.0 - factors0
+        yFacInv = 1.0 - factors1
+        return [
+            ((p0 * xFacInv + p1 * factors0) * (yFacInv)) +
+            ((p2 * xFacInv + p3 * factors0) * (factors1)),
+            -((dx1 * xFacInv) + (dx2 * factors0)),
+            -((dy1 * yFacInv) + (dy2 * factors1)) ]
+
 
     def updateLines(self, start, end, val):
         lines = self.get_line(start, end)
@@ -93,8 +106,5 @@ class CostMap():
 
 if __name__ == "__main__":
     costmap = CostMap()
-    print costmap.world_map(np.array([2,0.2]))
-    print costmap.map_world(np.array([240,200]))
     costmap.updateCostMap(np.array([240,200]),0.1)
-    print costmap.getCostMap(np.array([240,200]))
-    costmap.updateLines(np.array([240,210]),np.array([250,240]),-0.1)
+    print costmap.getMapValueWithDerivatives(np.array([240,199]))

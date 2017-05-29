@@ -89,9 +89,11 @@ class LSLAMGUI(threading.Thread):
             data, pose, newscan = self.q.get(block=False)
             self.q.queue.clear()
             #update map
-            self.img.setImage(data)
+            I = np.zeros(data.shape)
+            I.fill(1)
+            self.img.setImage(I - data)
             #update robot pose
-            self.robot.setRotation(pose[2])
+            self.robot.setRotation(180.*pose[2]/np.pi)
             self.robot.setPos(pose[0],pose[1])
             #update laser scan
             #spots = [{'pos': pos} for pos in newscan]
@@ -106,7 +108,7 @@ class LSLAMGUI(threading.Thread):
 
 if __name__ == "__main__":
     gui = LSLAMGUI()
-    gui.run()
+    gui.start()
     print 'sample gui test'
     for i in range(1000):
         time.sleep(0.1)
