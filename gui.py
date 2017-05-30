@@ -13,11 +13,12 @@ import threading
 
 class RobotItem(QtGui.QGraphicsItem):
     """a sample robot item"""
-    def __init__(self):
+    def __init__(self, color):
         super(RobotItem, self).__init__()
         #self.setFlag(QtGui.QGraphicsItem.ItemIsMovable)
         self.setCacheMode(QtGui.QGraphicsItem.DeviceCoordinateCache)
         self.setZValue(1)
+        self.color = color
 
     def boundingRect(self):
         adjust = 2.0
@@ -28,7 +29,12 @@ class RobotItem(QtGui.QGraphicsItem):
         #Draw a sample robot
         pen = QtGui.QPen()
         pen.setWidth(1);
-        pen.setBrush(QtCore.Qt.blue)
+        if self.color =='r':
+            pen.setBrush(QtCore.Qt.red)
+        elif self.color =='b':
+            pen.setBrush(QtCore.Qt.blue)
+        else:
+            pen.setBrush(QtCore.Qt.green)
         painter.setPen(pen)
         painter.setBrush(QtCore.Qt.NoBrush)
         painter.drawEllipse(QtCore.QPointF(0.0, 0.0), 5, 5)
@@ -69,9 +75,10 @@ class LSLAMGUI(threading.Thread):
         self.sct.setParentItem(self.img)
 
         #Create RobotItem(custom) for showing robot pose 
-        self.robot = RobotItem()
+        self.robot = RobotItem('b')
         self.robot.setParentItem(self.img)
-
+        self.robot0 = RobotItem('r')
+        self.robot0.setParentItem(self.img)
         #Set timer
         timer = pg.QtCore.QTimer()
         timer.timeout.connect(self.update)
@@ -86,7 +93,7 @@ class LSLAMGUI(threading.Thread):
             #remove previous laser scan data
             self.sct.clear()
             #Check is there any new data in queue
-            data, pose, newscan = self.q.get(block=False)
+            data, pose, pose0, newscan = self.q.get(block=False)
             self.q.queue.clear()
             #update map
             I = np.zeros(data.shape)
@@ -95,6 +102,8 @@ class LSLAMGUI(threading.Thread):
             #update robot pose
             self.robot.setRotation(180.*pose[2]/np.pi)
             self.robot.setPos(pose[0],pose[1])
+            self.robot0.setRotation(180.*pose0[2]/np.pi)
+            self.robot0.setPos(pose0[0],pose0[1])
             #update laser scan
             #spots = [{'pos': pos} for pos in newscan]
             spots = [{'pos': list(newscan[i,:])} for i in range(newscan.shape[0])]
@@ -102,8 +111,8 @@ class LSLAMGUI(threading.Thread):
         except Queue.Empty:
             pass
 
-    def setdata(self, mapdata, robotpose, newscan):
-        self.q.put( (mapdata,robotpose, newscan) )
+    def setdata(self, mapdata, robotpose,robotpose0, newscan):
+        self.q.put( (mapdata,robotpose,robotpose0, newscan) )
         pass
 
 if __name__ == "__main__":
@@ -114,6 +123,6 @@ if __name__ == "__main__":
         time.sleep(0.1)
         newscan = np.zeros((10,2))
         newscan.fill(0.1)
-        gui.setdata(np.random.rand(400,400), [0,0,i], newscan)
+        gui.setdata(np.random.rand(400,400), [0,0,i], [0,0,0], newscan)
 
     
