@@ -6,7 +6,8 @@ import numpy as np
 
 
 class CostMap():
-    def __init__(self, size =(400,400), original_point = (300,200), resolution = 0.1):
+    def __init__(self, size =(400,400), original_point = (300,100), resolution = 0.1):
+        self.size = size
         self.map_data = np.zeros(size)
         self.prob_data = np.zeros(size)
         self.prob_data.fill(0.5)
@@ -22,8 +23,10 @@ class CostMap():
         return world_point
 
     def updateCostMap(self, map_point, val):
-        self.map_data[int(map_point[0]), int(map_point[1])] += val
-        new_val = self.map_data[int(map_point[0]), int(map_point[1])]
+        self.map_data[map_point[0], map_point[1]] += val
+        new_val = self.map_data[map_point[0], map_point[1]]
+        if new_val > 100 or new_val < -100:
+            return            
         odds = np.exp(new_val)
         new_prob = odds/(1+odds)
         self.prob_data[int(map_point[0]), int(map_point[1])] = new_prob
@@ -55,10 +58,10 @@ class CostMap():
 
     def get_line(self, start, end):
         # Setup initial conditions
-        x1 = start[0]
-        y1 = start[1]
-        x2 = end[0]
-        y2 = end[1]
+        x1 = start[0] + 0.5
+        y1 = start[1] + 0.5
+        x2 = end[0] + 0.5
+        y2 = end[1] + 0.5
         x1 = int(x1)
         x2 = int(x2)
         y1 = int(y1)

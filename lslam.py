@@ -44,28 +44,45 @@ class LSLAM():
             pose_matrix[1,3] = (self.pose[1] - self.costmap.original_point[1])*self.costmap.resolution
 
             new_pose_matrix = pose_matrix * odom_delta
-
+            #new_pose_matrix = pose_matrix
             #t=pose*odom_inv*last_odom
             new_pose = self.getrobotpose(new_pose_matrix)
             # scan data in robot coordinations
-            map_idx_int, map_idx, scan_fix = self.movescanbyodom(scan, new_pose_matrix)
-            scan_delta = self.getCompleteHessianDerivs(new_pose, map_idx, scan_fix)
-            self.pose = new_pose + scan_delta
-
-            matching_pose_matrix = tf.transformations.euler_matrix(0.0, 0.0, self.pose[2])
-            matching_pose_matrix[0,3] = (self.pose[0] - self.costmap.original_point[0])*self.costmap.resolution
-            matching_pose_matrix[1,3] = (self.pose[1] - self.costmap.original_point[1])*self.costmap.resolution
-            map_idx_int, map_idx, scan_fix = self.movescanbyodom(scan, matching_pose_matrix)
 
             #==================================
             #Scan matching
             #==================================
-            pass
+            map_idx, scan_fix = self.movescanbyodom(scan, new_pose_matrix)
+            scan_delta = self.getCompleteHessianDerivs(new_pose, map_idx, scan_fix)
+            self.pose = new_pose + scan_delta
+            #self.pose = new_pose
+            #self.pose[0] = new_pose[0] + scan_delta[0]
+            #self.pose[1] = new_pose[1] + scan_delta[1]
+            #print scan_delta
+            """"
+            if np.isnan(scan_delta[0]):
+                self.pose[0] = new_pose[0]
+            else:
+                self.pose[0] = new_pose[0] + scan_delta[0]
+            if np.isnan(scan_delta[1]):
+                self.pose[1] = new_pose[1]
+            else:
+                self.pose[1] = new_pose[1] + scan_delta[1]
+            if np.isnan(scan_delta[2]):
+                self.pose[2] = new_pose[2]
+            else:
+                self.pose[2] = new_pose[2] + scan_delta[2]
+            """
+            matching_pose_matrix = tf.transformations.euler_matrix(0.0, 0.0, self.pose[2])
+            matching_pose_matrix[0,3] = (self.pose[0] - self.costmap.original_point[0])*self.costmap.resolution
+            matching_pose_matrix[1,3] = (self.pose[1] - self.costmap.original_point[1])*self.costmap.resolution
+            map_idx, scan_fix = self.movescanbyodom(scan, matching_pose_matrix)
+
 
             #==================================
             #Map Update
             #==================================
-            self.mapupdate(self.pose, map_idx_int)
+            self.mapupdate(self.pose, map_idx)
             #tmp = tf.transformations.euler_matrix(0.0, 0.0, self.a)
             #tmp[0,3] = 0.15
 
@@ -80,7 +97,11 @@ class LSLAM():
         dTr = np.zeros((3,1))
         for i in range(size):
             transformedPointData = self.costmap.getMapValueWithDerivatives(map_idx[i,:])
-            curPoint = scan[i,:]
+            #if np.isnan(map_idx[i,0]) or np.isnan(map_idx[i,1]):
+            #    continue
+
+            curPoint = scan[i,:] / self.costmap.resolution
+            #curPoint = self.costmap.world_map(curPoint)
             funVal = 1.0 - transformedPointData[0]
             dTr[0] += transformedPointData[1] * funVal
             dTr[1] += transformedPointData[2] * funVal
@@ -92,9 +113,9 @@ class LSLAM():
             H[0,1] += transformedPointData[1] * transformedPointData[2]
             H[0,2] += transformedPointData[1] * rotDeriv
             H[1,2] += transformedPointData[2] * rotDeriv
-        H[0,0] += 100000 
-        H[1,1] += 100000
-        H[2,2] += 1000
+        H[0,0] += 1000 
+        H[1,1] += 1000
+        H[2,2] += 0
         H[1,0] = H[0,1] 
         H[2,0] = H[0,2]
         H[2,1] = H[1,2]
@@ -107,10 +128,19 @@ class LSLAM():
             return np.zeros( 3 )
           
         
-    def mapupdate(self, robotpose, map_idx_int):
-        for i in range(map_idx_int.shape[0]):
-            map_idx_i = map_idx_int[i,:]
-            costmap.updateCostMap(map_idx_i,0.1)
+    def mapupdate(self, robotpose, map_idx):
+        #if int(map_idx_int[0,0]) > self.costmap.size[0] or int(map_idx_int[0,0]) < 0:
+        #    return 
+        #if int(map_idx_int[0,1]) > self.costmap.size[1] or int(map_idx_int[0,1]) < 0:
+        #    return 
+
+        for i in range(map_idx.shape[0]):
+            #print robotpose
+            #print map_idx_int
+            map_idx_i = map_idx[i,:]
+            map_idx_i_ = map_idx_i + 0.5
+            map_idx_i_int = map_idx_i_.astype(int)
+            costmap.updateCostMap(map_idx_i_int,0.2)
             costmap.updateLines(robotpose, map_idx_i,-0.1)
 
     def movescanbyodom(self, scan, odom):
@@ -126,11 +156,10 @@ class LSLAM():
         world_idx = np.array(world_idx[0:2,:])
         world_idx = world_idx.transpose()
         map_idx = costmap.world_map(world_idx)
-        map_idx_int = map_idx.astype(int)
 
         scan_fix = scan_fix.transpose()
         scan_fix = scan_fix[:,0:2]
-        return map_idx_int, map_idx, scan_fix
+        return  map_idx, scan_fix
 
     def getrobotpose(self, odom):
         al, be, ga = tf.transformations.euler_from_matrix(odom[0:3,0:3])
@@ -148,3 +177,5 @@ start = time.time()
 lslam.run()
 elapsed_time = time.time() - start
 print ("elapsed_time:{0}".format(elapsed_time)) + "[sec]"
+
+
