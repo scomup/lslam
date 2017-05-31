@@ -12,8 +12,10 @@ class LSLAM():
         self.raw_data = raw_data
         self.costmap = costmap
         self.gui = gui
-        tmp = tf.transformations.euler_matrix(0.0, 0.0, -0.63)
-        tmp[0,3] = 0.15
+        #tmp = tf.transformations.euler_matrix(0.0, 0.0, -0.63)
+        #tmp[0,3] = 0.15
+        tmp = tf.transformations.euler_matrix(0.0, 0.0, 0.0)
+        tmp[0,3] = 0.10
         self.scan_base = np.matrix(tmp)
         #self.last_odom 
 
@@ -43,8 +45,8 @@ class LSLAM():
             pose_matrix[0,3] = (self.pose[0] - self.costmap.original_point[0])*self.costmap.resolution
             pose_matrix[1,3] = (self.pose[1] - self.costmap.original_point[1])*self.costmap.resolution
 
-            new_pose_matrix = pose_matrix * odom_delta
-            #new_pose_matrix = pose_matrix
+            #new_pose_matrix = pose_matrix * odom_delta
+            new_pose_matrix = pose_matrix
             #t=pose*odom_inv*last_odom
             new_pose = self.getrobotpose(new_pose_matrix)
             # scan data in robot coordinations
@@ -54,12 +56,12 @@ class LSLAM():
             #==================================
             map_idx, scan_fix = self.movescanbyodom(scan, new_pose_matrix)
             scan_delta = self.getCompleteHessianDerivs(new_pose, map_idx, scan_fix)
-            self.pose = new_pose + scan_delta
+            #self.pose = new_pose + scan_delta
             #self.pose = new_pose
             #self.pose[0] = new_pose[0] + scan_delta[0]
             #self.pose[1] = new_pose[1] + scan_delta[1]
             #print scan_delta
-            """"
+            
             if np.isnan(scan_delta[0]):
                 self.pose[0] = new_pose[0]
             else:
@@ -72,7 +74,7 @@ class LSLAM():
                 self.pose[2] = new_pose[2]
             else:
                 self.pose[2] = new_pose[2] + scan_delta[2]
-            """
+            
             matching_pose_matrix = tf.transformations.euler_matrix(0.0, 0.0, self.pose[2])
             matching_pose_matrix[0,3] = (self.pose[0] - self.costmap.original_point[0])*self.costmap.resolution
             matching_pose_matrix[1,3] = (self.pose[1] - self.costmap.original_point[1])*self.costmap.resolution
@@ -113,8 +115,8 @@ class LSLAM():
             H[0,1] += transformedPointData[1] * transformedPointData[2]
             H[0,2] += transformedPointData[1] * rotDeriv
             H[1,2] += transformedPointData[2] * rotDeriv
-        H[0,0] += 1000 
-        H[1,1] += 1000
+        H[0,0] += 0 
+        H[1,1] += 0
         H[2,2] += 0
         H[1,0] = H[0,1] 
         H[2,0] = H[0,2]
@@ -167,8 +169,8 @@ class LSLAM():
         map_point = costmap.world_map(odompose)
         return [map_point[0,0],map_point[0,1],ga]
 
-#bagreader = BagReader('/home/liu/bag/h1.bag', '/Rulo/laser_scan', '/Rulo/odom', 60, 800)
-bagreader = BagReader('/home/liu/bag/h1.bag', '/Rulo/laser_scan', '/Rulo/odom', 80, 800)
+bagreader = BagReader('h1.bag', 'scan', 'odom', 0, 800)
+#bagreader = BagReader('/home/liu/bag/h1.bag', '/Rulo/laser_scan', '/Rulo/odom', 80, 800)
 costmap = CostMap()        
 gui = LSLAMGUI()
 gui.start()
