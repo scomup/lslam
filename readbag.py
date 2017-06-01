@@ -40,6 +40,8 @@ class BagReader:
             cloud = laser_projector.projectLaser(msg)
             frame_points = np.zeros([0,2])
             for p in pc2.read_points(cloud, field_names=("x", "y", "z"), skip_nans=True):
+                    #if p[0] < 3.8:
+                    #    continue
                     p2d = np.array([p[0], p[1]])
                     frame_points = np.vstack([frame_points, p2d])
             self.points.append([time_stamp,frame_points])

@@ -2,11 +2,9 @@
 # coding:utf-8
 
 import numpy as np
-#import ConfigParser
-
 
 class CostMap():
-    def __init__(self, size =(400,400), original_point = (300,100), resolution = 0.1):
+    def __init__(self, size =(400,400), original_point = (200,200), resolution = 0.05):
         self.size = size
         self.map_data = np.zeros(size)
         self.prob_data = np.zeros(size)
@@ -23,21 +21,21 @@ class CostMap():
         return world_point
 
     def updateCostMap(self, map_point, val):
-        self.map_data[map_point[0], map_point[1]] += val
-        new_val = self.map_data[map_point[0], map_point[1]]
+        self.map_data[map_point[1], map_point[0]] += val
+        new_val = self.map_data[map_point[1], map_point[0]]
         if new_val > 100 or new_val < -100:
             return            
         odds = np.exp(new_val)
         new_prob = odds/(1+odds)
-        self.prob_data[int(map_point[0]), int(map_point[1])] = new_prob
+        self.prob_data[int(map_point[1]), int(map_point[0])] = new_prob
 
     def getMapValueWithDerivatives(self, map_point_float):
         factors0 = map_point_float[0] - float(int(map_point_float[0]))
         factors1 = map_point_float[1] - float(int(map_point_float[1]))
-        p0 = self.prob_data[int(map_point_float[0]), int(map_point_float[1])]
-        p1 = self.prob_data[int(map_point_float[0]), int(map_point_float[1]+1)]
-        p2 = self.prob_data[int(map_point_float[0]+1), int(map_point_float[1])]
-        p3 = self.prob_data[int(map_point_float[0]+1), int(map_point_float[1]+1)]
+        p0 = self.prob_data[int(map_point_float[1]),   int(map_point_float[0])]
+        p1 = self.prob_data[int(map_point_float[1]),   int(map_point_float[0]+1)]
+        p2 = self.prob_data[int(map_point_float[1]+1), int(map_point_float[0])]
+        p3 = self.prob_data[int(map_point_float[1]+1), int(map_point_float[0]+1)]
         dx1 = p0 - p1
         dx2 = p2 - p3
         dy1 = p0 - p2
