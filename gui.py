@@ -19,7 +19,7 @@ class RobotItem(QtGui.QGraphicsItem):
         self.setCacheMode(QtGui.QGraphicsItem.DeviceCoordinateCache)
         self.setZValue(1)
         self.color = color
-
+        
     def boundingRect(self):
         adjust = 2.0
         return QtCore.QRectF(-10 - adjust, -10 - adjust, 20 + adjust,
@@ -45,21 +45,41 @@ class LSLAMGUI(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
         self.q = Queue.Queue()
+        self.state = 0 
 
     def run(self):
         #Create qtwindow
         app = QtGui.QApplication([])
-        w = pg.GraphicsWindow()
-        w.show()
-        w.resize(800,800)
-        w.setWindowTitle("viewer")
-        #Create ViewBox
-        vb = w.addViewBox()
-        vb.invertY(True)
-        ## lock the aspect ratio
-        vb.setAspectLocked(True)
-        ## Set initial view bounds
-        vb.setRange(QtCore.QRectF(0, 0, 400, 400))
+        win = QtGui.QMainWindow()
+        win.resize(800,800)
+        win.show()
+        win.setWindowTitle('viewer')
+
+        cw = QtGui.QWidget()
+        win.setCentralWidget(cw)
+
+        l = QtGui.QGridLayout()
+        cw.setLayout(l)
+        l.setSpacing(0)
+
+        v = pg.GraphicsView()
+        vb = pg.ViewBox()
+        vb.setAspectLocked()
+        v.setCentralItem(vb)
+        l.addWidget(v, 0, 0, 1, 3)
+
+        button_play = QtGui.QPushButton('Play')
+        l.addWidget(button_play, 1, 0)
+        button_play.clicked.connect(self.handleButton_play)
+        button_next = QtGui.QPushButton('Next')
+        l.addWidget(button_next, 1, 1)
+        button_next.clicked.connect(self.handleButton_next)
+        button_back = QtGui.QPushButton('Back')
+        l.addWidget(button_back, 1, 2)
+        button_back.clicked.connect(self.handleButton_back)
+
+        #l2 = QtGui.QVBoxLayout(self)
+        #l2.addWidget(v, 0, 0)
 
         #Create ImageItem for map
         self.img = pg.ImageItem(np.zeros((400,400)))
@@ -87,7 +107,16 @@ class LSLAMGUI(threading.Thread):
         import sys
         if (sys.flags.interactive != 1) or not hasattr(QtCore, 'PYQT_VERSION'):
             QtGui.QApplication.instance().exec_()
-              
+
+    def handleButton_play(self):
+        self.state = 1  
+
+    def handleButton_next(self):
+        self.state = 2  
+
+    def handleButton_back(self):
+        self.state = 3 
+
     def update(self):
         try:
             #remove previous laser scan data

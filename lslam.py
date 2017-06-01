@@ -17,49 +17,63 @@ class LSLAM():
         tmp = tf.transformations.euler_matrix(0.0, 0.0, 0.0)
         tmp[0,3] = 0.00
         self.scan_base = np.matrix(tmp)
+        self.idx = 0
+        self.size = len(self.raw_data)
 
     def run(self):
-        for loopi in range(len(self.raw_data)):
+        while self.idx < self.size:
             time.sleep(0.03)
-            scan, odom = self.raw_data[loopi]
-            scan = np.matrix(scan)
-            odom = np.matrix(odom)
-            try: 
-                last_odom = self.last_odom
-                self.last_odom = odom
-            except AttributeError:
-                self.last_odom = odom
-                self.pose = self.matrix_to_pose(odom)
-                continue
+            if self.gui.state == 1:
+                self.step()
+                self.idx += 1
+            elif self.gui.state == 2:
+                self.gui.state = 0
+                self.step()
+                self.idx += 1
+            elif self.gui.state == 3:
+                self.gui.state = 0
+                self.step()
+                self.idx -= 1
 
-            #==================================
-            #Motion estimation
-            #==================================
-            # Calculate the difference between last_odom and odom
-            last_odom_inv = np.matrix(np.linalg.inv(last_odom))
-            odom_delta = last_odom_inv * odom
-            # Calculate the new pose
-            pose_matrix = self.pose_to_matrix(self.pose)
-            new_pose_matrix = pose_matrix * odom_delta
-            new_pose = self.matrix_to_pose(new_pose_matrix)
-
-            #==================================
-            #Scan matching
-            #==================================
-            map_idx, scan_fix = self.get_scan_in_world_coord(scan, new_pose_matrix)
-            # Try to do scan matching
-            scan_delta = self.scan_matching(new_pose, map_idx, scan_fix)
-            # Update pose by scan matching
-            self.pose = new_pose + scan_delta
-                
-            #==================================
-            #Map Update
-            #==================================
-            self.map_update(self.pose, map_idx)
-            # Set gui
-            self.costmap.prob_data[0,0] = 0
-            self.costmap.prob_data[0,1] = 1       
-            gui.setdata(self.costmap.prob_data, self.pose, map_idx)
+    def step(self):
+        #for loopi in range(len(self.raw_data)):
+        #time.sleep(0.03)
+        scan, odom = self.raw_data[self.idx]
+        scan = np.matrix(scan)
+        odom = np.matrix(odom)
+        try: 
+            last_odom = self.last_odom
+            self.last_odom = odom
+        except AttributeError:
+            self.last_odom = odom
+            self.pose = self.matrix_to_pose(odom)
+            return
+        #==================================
+        #Motion estimation
+        #==================================
+        # Calculate the difference between last_odom and odom
+        last_odom_inv = np.matrix(np.linalg.inv(last_odom))
+        odom_delta = last_odom_inv * odom
+        # Calculate the new pose
+        pose_matrix = self.pose_to_matrix(self.pose)
+        new_pose_matrix = pose_matrix * odom_delta
+        new_pose = self.matrix_to_pose(new_pose_matrix)
+        #==================================
+        #Scan matching
+        #==================================
+        map_idx, scan_fix = self.get_scan_in_world_coord(scan, new_pose_matrix)
+        # Try to do scan matching
+        scan_delta = self.scan_matching(new_pose, map_idx, scan_fix)
+        # Update pose by scan matching
+        self.pose = new_pose + scan_delta  
+        #==================================
+        #Map Update
+        #==================================
+        self.map_update(self.pose, map_idx)
+        # Set gui
+        self.costmap.prob_data[0,0] = 0
+        self.costmap.prob_data[0,1] = 1       
+        gui.setdata(self.costmap.prob_data, self.pose, map_idx)
 
     def pose_to_matrix(self, pose):
         pose_matrix = tf.transformations.euler_matrix(0.0, 0.0, pose[2])
