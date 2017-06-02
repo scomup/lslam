@@ -1,6 +1,6 @@
 #!/usr/bin/python
 # coding: UTF-8
-import numpy as np
+
 import rosbag
 from std_msgs.msg import Int32, String
 import rospy, math, random
@@ -40,7 +40,12 @@ class BagReader:
             cloud = laser_projector.projectLaser(msg)
             frame_points = np.zeros([0,2])
             for p in pc2.read_points(cloud, field_names=("x", "y", "z"), skip_nans=True):
-                    #if p[0] < 3.8:
+                    #theta = math.atan2(p[0] , p[1])
+                    #laser_range = np.pi
+                    #if theta > np.pi/2 + np.pi/3 + laser_range/2 or theta < np.pi/2 + np.pi/3 - laser_range/2:
+                    #    continue
+                    #d = math.sqrt(p[0]*p[0] + p[1]*p[1])
+                    #if d > 1.5 and theta > np.pi/2:
                     #    continue
                     p2d = np.array([p[0], p[1]])
                     frame_points = np.vstack([frame_points, p2d])
@@ -69,7 +74,7 @@ class BagReader:
             if time_stamp_scan < start_time:
                 continue
             time_stamp_odom,odom_data = self.odoms[idx]
-            while idx < len(self.odoms):
+            while idx < len(self.odoms) - 1:
                 if time_stamp_odom > time_stamp_scan:
                     break
                 time_stamp_odom,odom_data = self.odoms[idx]

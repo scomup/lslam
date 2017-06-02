@@ -57,6 +57,7 @@ class LSLAM():
         # Calculate the new pose
         pose_matrix = self.pose_to_matrix(self.pose)
         new_pose_matrix = pose_matrix * odom_delta
+        #new_pose_matrix = pose_matrix
         new_pose = self.matrix_to_pose(new_pose_matrix)
         #==================================
         #Scan matching
@@ -107,9 +108,9 @@ class LSLAM():
             H[0,1] += transformedPointData[1] * transformedPointData[2]
             H[0,2] += transformedPointData[1] * rotDeriv
             H[1,2] += transformedPointData[2] * rotDeriv
-        H[0,0] += 0
-        H[1,1] += 0
-        H[2,2] += 0
+        H[0,0] += 500
+        H[1,1] += 500
+        H[2,2] += 50
         H[1,0] = H[0,1] 
         H[2,0] = H[0,2]
         H[2,1] = H[1,2]
@@ -124,8 +125,9 @@ class LSLAM():
             map_idx_i = map_idx[i,:]
             map_idx_i_ = map_idx_i + 0.5
             map_idx_i_int = map_idx_i_.astype(int)
-            costmap.updateCostMap(map_idx_i_int,0.2)
-            costmap.updateLines(robotpose, map_idx_i,-0.1)
+            use_gaussian = self.gui.checkbox_gaussian.isChecked()
+            costmap.updateCostMap(map_idx_i_int,0.9, use_gaussian)
+            costmap.updateLines(robotpose, map_idx_i,-0.1, use_gaussian)
 
     def get_scan_in_world_coord(self, scan, odom):
         scan_size = scan.shape[0]
@@ -143,6 +145,7 @@ class LSLAM():
         return  map_idx, scan_fix
 
 bagreader = BagReader('h1.bag', 'scan', 'odom', 0, 800)
+#bagreader = BagReader('/home/liu/bag/test_range.bag', '/Rulo/laser_scan', '/Rulo/odom', 3, 800)
 #bagreader = BagReader('/home/liu/bag/h1.bag', '/Rulo/laser_scan', '/Rulo/odom', 45, 800)
 costmap = CostMap()        
 gui = LSLAMGUI()

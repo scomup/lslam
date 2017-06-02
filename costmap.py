@@ -4,13 +4,14 @@
 import numpy as np
 
 class CostMap():
-    def __init__(self, size =(400,400), original_point = (200,200), resolution = 0.05):
+    def __init__(self, size =(400,400), original_point = (300,150), resolution = 0.05):
         self.size = size
         self.map_data = np.zeros(size)
         self.prob_data = np.zeros(size)
         self.prob_data.fill(0.5)
         self.resolution = resolution
         self.original_point = np.array(original_point)
+        self.ker = np.array([[1./16.,1./8.,1./16.],[1./8.,1./4.,1./8.],[1./16.,1./8.,1./16.]])
 
     def world_map(self, world_point):
         map_point = world_point/self.resolution + np.tile(self.original_point,(world_point.shape[0],1))
@@ -20,14 +21,22 @@ class CostMap():
         world_point = (map_point - np.tile(self.original_point,(map_point.shape[0],1)) ) * self.resolution
         return world_point
 
-    def updateCostMap(self, map_point, val):
-        self.map_data[map_point[1], map_point[0]] += val
-        new_val = self.map_data[map_point[1], map_point[0]]
-        if new_val > 100 or new_val < -100:
-            return            
-        odds = np.exp(new_val)
-        new_prob = odds/(1+odds)
-        self.prob_data[int(map_point[1]), int(map_point[0])] = new_prob
+    def updateCostMap(self, map_point, val, use_gaussian):
+        old_val = self.map_data[map_point[1], map_point[0]]
+        if old_val > 100 or old_val < -100:
+            return
+        if not use_gaussian:
+            new_val = old_val + val
+            self.map_data[map_point[1], map_point[0]] = new_val
+            odds = np.exp(new_val)
+            new_prob = odds/(1+odds)
+            self.prob_data[int(map_point[1]), int(map_point[0])] = new_prob
+        else:
+            self.map_data[map_point[1]-1 : map_point[1]+2, map_point[0]-1 : map_point[0]+2] += self.ker * val
+            odds = np.exp(self.map_data[map_point[1]-1 : map_point[1]+2, map_point[0]-1 : map_point[0]+2])
+            new_prob = odds/(1+odds)
+            self.prob_data[map_point[1]-1 : map_point[1]+2, map_point[0]-1 : map_point[0]+2] = new_prob
+        
 
     def getMapValueWithDerivatives(self, map_point_float):
         factors0 = map_point_float[0] - float(int(map_point_float[0]))
@@ -49,10 +58,10 @@ class CostMap():
             -((dy1 * yFacInv) + (dy2 * factors1)) ]
 
 
-    def updateLines(self, start, end, val):
+    def updateLines(self, start, end, val, use_gaussian):
         lines = self.get_line(start, end)
         for p in lines:
-            self.updateCostMap(p, val)
+            self.updateCostMap(p, val, use_gaussian)
 
     def get_line(self, start, end):
         # Setup initial conditions

@@ -66,17 +66,25 @@ class LSLAMGUI(threading.Thread):
         vb = pg.ViewBox()
         vb.setAspectLocked()
         v.setCentralItem(vb)
-        l.addWidget(v, 0, 0, 1, 3)
+        l.addWidget(v, 0, 0, 1, 4)
 
         button_play = QtGui.QPushButton('Play')
+        button_play.setFixedWidth(110)
         l.addWidget(button_play, 1, 0)
         button_play.clicked.connect(self.handleButton_play)
         button_next = QtGui.QPushButton('Next')
+        button_next.setFixedWidth(110)
         l.addWidget(button_next, 1, 1)
         button_next.clicked.connect(self.handleButton_next)
         button_back = QtGui.QPushButton('Back')
+        button_back.setFixedWidth(110)
         l.addWidget(button_back, 1, 2)
         button_back.clicked.connect(self.handleButton_back)
+        self.checkbox_gaussian = QtGui.QCheckBox("Use gaussian")
+        self.checkbox_gaussian.setChecked(False)
+        #checkbox_gaussian.stateChanged.connect(self.handleCheckbox_gaussian)
+        l.addWidget(self.checkbox_gaussian,1,3)
+
 
         #l2 = QtGui.QVBoxLayout(self)
         #l2.addWidget(v, 0, 0)
@@ -108,6 +116,9 @@ class LSLAMGUI(threading.Thread):
         if (sys.flags.interactive != 1) or not hasattr(QtCore, 'PYQT_VERSION'):
             QtGui.QApplication.instance().exec_()
 
+    def handleCheckbox_gaussian(self):
+        self.state = 1  
+
     def handleButton_play(self):
         self.state = 1  
 
@@ -119,11 +130,11 @@ class LSLAMGUI(threading.Thread):
 
     def update(self):
         try:
-            #remove previous laser scan data
-            self.sct.clear()
             #Check is there any new data in queue
             data, pose, newscan = self.q.get(block=False)
             self.q.queue.clear()
+            #remove previous laser scan data
+            self.sct.clear()
             #update map
             I = np.zeros(data.shape)
             I.fill(1)
