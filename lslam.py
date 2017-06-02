@@ -73,8 +73,10 @@ class LSLAM():
         self.map_update(self.pose, map_idx)
         # Set gui
         self.costmap.prob_data[0,0] = 0
-        self.costmap.prob_data[0,1] = 1       
-        gui.setdata(self.costmap.prob_data, self.pose, map_idx)
+        self.costmap.prob_data[0,1] = 1
+        x = int(self.pose[0])
+        y = int(self.pose[1])       
+        gui.setdata(self.costmap.prob_data[y-40:y+41,x-40:x+41], self.costmap.prob_data, self.pose, map_idx)
 
     def pose_to_matrix(self, pose):
         pose_matrix = tf.transformations.euler_matrix(0.0, 0.0, pose[2])

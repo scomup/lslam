@@ -4,6 +4,7 @@
 from pyqtgraph.Qt import QtCore, QtGui
 import numpy as np
 import pyqtgraph as pg
+import pyqtgraph.opengl as gl
 import signal
 import Queue
 import sys
@@ -48,50 +49,68 @@ class LSLAMGUI(threading.Thread):
         self.state = 0 
 
     def run(self):
-        #Create qtwindow
+        ## Always start by initializing Qt (only once per application)
         app = QtGui.QApplication([])
-        win = QtGui.QMainWindow()
-        win.resize(800,800)
-        win.show()
-        win.setWindowTitle('viewer')
 
-        cw = QtGui.QWidget()
-        win.setCentralWidget(cw)
+        ## Define a top-level widget to hold everything
+        w = QtGui.QWidget()
+        w.resize(800,900)
 
-        l = QtGui.QGridLayout()
-        cw.setLayout(l)
-        l.setSpacing(0)
+        ## Create some widgets to be placed inside
+        #text = QtGui.QLineEdit('enter text')
 
-        v = pg.GraphicsView()
-        vb = pg.ViewBox()
-        vb.setAspectLocked()
-        v.setCentralItem(vb)
-        l.addWidget(v, 0, 0, 1, 4)
-
+        p2d = pg.GraphicsView()
+        p3d = gl.GLViewWidget()
         button_play = QtGui.QPushButton('Play')
         button_play.setFixedWidth(110)
-        l.addWidget(button_play, 1, 0)
+
         button_play.clicked.connect(self.handleButton_play)
         button_next = QtGui.QPushButton('Next')
         button_next.setFixedWidth(110)
-        l.addWidget(button_next, 1, 1)
+
         button_next.clicked.connect(self.handleButton_next)
         button_back = QtGui.QPushButton('Back')
         button_back.setFixedWidth(110)
-        l.addWidget(button_back, 1, 2)
+
         button_back.clicked.connect(self.handleButton_back)
         self.checkbox_gaussian = QtGui.QCheckBox("Use gaussian")
         self.checkbox_gaussian.setChecked(False)
         #checkbox_gaussian.stateChanged.connect(self.handleCheckbox_gaussian)
-        l.addWidget(self.checkbox_gaussian,1,3)
+        p3d.setSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding)
+        #g = gl.GLGridItem()
+        #p3d.addItem(g)
 
+        ## Create a grid layout to manage the widgets size and position
+        layout = QtGui.QGridLayout()
+        w.setLayout(layout)
 
-        #l2 = QtGui.QVBoxLayout(self)
-        #l2.addWidget(v, 0, 0)
+        ## Add widgets to the layout in their proper positions
+        layout.addWidget(p2d, 0, 0, 1, 5)  
+        layout.addWidget(p3d, 1, 0, 1, 5) 
+        #layout.addWidget(text, 2, 1) 
+        layout.addWidget(button_play, 2, 0)
+        layout.addWidget(button_next, 2, 1)
+        layout.addWidget(button_back, 2, 2)
+        layout.addWidget(self.checkbox_gaussian,2,3)
+        #layout.addWidget(text, 2, 4)
+
+        # Create a viewBox for ImageItem
+        vb = pg.ViewBox()
+        vb.setAspectLocked()
+        p2d.setCentralItem(vb)
+
+        self.prob_map = gl.GLSurfacePlotItem(z=np.zeros((80, 80)), shader='shaded', color=(0.5, 0.5, 1, 1))
+        self.prob_map.scale(0.5, 0.5, 1.0)
+        self.prob_map.translate(-20, -20, 0)
+        p3d.addItem(self.prob_map)
+
 
         #Create ImageItem for map
         self.img = pg.ImageItem(np.zeros((400,400)))
         vb.addItem(self.img)
+
+        ## Display the widget as a new window
+        w.show()
 
         ## Set image level
         self.img.setLevels([0, 1])
@@ -110,11 +129,11 @@ class LSLAMGUI(threading.Thread):
         #Set timer
         timer = pg.QtCore.QTimer()
         timer.timeout.connect(self.update)
-        timer.start(30)
+        timer.start(1000)
 
-        import sys
-        if (sys.flags.interactive != 1) or not hasattr(QtCore, 'PYQT_VERSION'):
-            QtGui.QApplication.instance().exec_()
+        ## Start the Qt event loop
+        app.exec_()
+
 
     def handleCheckbox_gaussian(self):
         self.state = 1  
@@ -131,14 +150,15 @@ class LSLAMGUI(threading.Thread):
     def update(self):
         try:
             #Check is there any new data in queue
-            data, pose, newscan = self.q.get(block=False)
+            data, prob, pose, newscan = self.q.get(block=False)
             self.q.queue.clear()
             #remove previous laser scan data
             self.sct.clear()
             #update map
-            I = np.zeros(data.shape)
+            self.prob_map.setData(z=data)
+            I = np.zeros(prob.shape)
             I.fill(1)
-            self.img.setImage(I - data.transpose())
+            self.img.setImage(I - prob.transpose())
             #update robot pose
             self.robot.setRotation(180.*pose[2]/np.pi)
             self.robot.setPos(pose[0],pose[1])
@@ -149,8 +169,8 @@ class LSLAMGUI(threading.Thread):
         except Queue.Empty:
             pass
 
-    def setdata(self, mapdata, robotpose, newscan):
-        self.q.put( (mapdata,robotpose, newscan) )
+    def setdata(self, mapdata, probdata, robotpose, newscan):
+        self.q.put( (mapdata, probdata, robotpose, newscan) )
         pass
 
 if __name__ == "__main__":
@@ -161,6 +181,6 @@ if __name__ == "__main__":
         time.sleep(0.1)
         newscan = np.zeros((10,2))
         newscan.fill(0.1)
-        gui.setdata(np.random.rand(400,400), [0,0,i], newscan)
+        gui.setdata(np.random.rand(80,80),np.random.rand(400,400), [0,0,i], newscan)
 
     
