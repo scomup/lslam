@@ -55,6 +55,7 @@ class LSLAMGUI(threading.Thread):
         ## Define a top-level widget to hold everything
         w = QtGui.QWidget()
         w.resize(800,900)
+        w.setWindowTitle("LiDAR SLAM Viewer")
 
         ## Create some widgets to be placed inside
         #text = QtGui.QLineEdit('enter text')
@@ -94,7 +95,7 @@ class LSLAMGUI(threading.Thread):
         layout.addWidget(self.checkbox_gaussian,2,3)
         #layout.addWidget(text, 2, 4)
 
-        # Create a viewBox for ImageItem
+        # Create a viewBox for 2D image
         vb = pg.ViewBox()
         vb.setAspectLocked()
         p2d.setCentralItem(vb)
@@ -129,7 +130,7 @@ class LSLAMGUI(threading.Thread):
         #Set timer
         timer = pg.QtCore.QTimer()
         timer.timeout.connect(self.update)
-        timer.start(1000)
+        timer.start(300)
 
         ## Start the Qt event loop
         app.exec_()
@@ -178,7 +179,7 @@ if __name__ == "__main__":
     gui.start()
     print 'sample gui test'
     for i in range(1000):
-        time.sleep(0.1)
+        time.sleep(0.05)
         newscan = np.zeros((10,2))
         newscan.fill(0.1)
         gui.setdata(np.random.rand(80,80),np.random.rand(400,400), [0,0,i], newscan)

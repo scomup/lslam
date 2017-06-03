@@ -23,7 +23,7 @@ class CostMap():
 
     def updateCostMap(self, map_point, val, use_gaussian):
         old_val = self.map_data[map_point[1], map_point[0]]
-        if old_val > 100 or old_val < -100:
+        if old_val > 50 or old_val < -50:
             return
         if not use_gaussian:
             new_val = old_val + val
