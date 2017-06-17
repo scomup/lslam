@@ -4,7 +4,7 @@
 import numpy as np
 
 class CostMap():
-    def __init__(self, size =(400,400), original_point = (100,100), resolution = 0.05):
+    def __init__(self, size =(400,400), original_point = (100,100), resolution = 0.025):
         self.size = size
         self.map_data = np.zeros(size)
         self.prob_data = np.zeros(size)

@@ -7,6 +7,30 @@ from costmap import *
 import tf
 import time
 
+##########################
+bagfile = 'h1.bag'
+scan_topic = 'scan' 
+odom_topic = 'odom'
+start_time = 0
+end_time = 800
+##########################
+image_file_name = 'map1.pgm'
+##########################
+lidar_angle = 0.
+lidar_x = 0.
+lidar_y = 0.
+##########################
+w_x = 0.
+w_y = 0.
+w_a = 0.
+##########################
+size =(400,400)
+original_point = (100,100) 
+resolution = 0.025
+
+
+
+
 class LSLAM():
     def __init__(self, raw_data, costmap, gui):
         self.raw_data = raw_data
@@ -14,8 +38,9 @@ class LSLAM():
         self.gui = gui
         #tmp = tf.transformations.euler_matrix(0.0, 0.0, -0.63)
         #tmp[0,3] = 0.15
-        tmp = tf.transformations.euler_matrix(0.0, 0.0, 0.0)
-        tmp[0,3] = 0.00
+        tmp = tf.transformations.euler_matrix(0.0, 0.0, lidar_angle)
+        tmp[0,3] = lidar_x
+        tmp[1,3] = lidar_y
         self.scan_base = np.matrix(tmp)
         self.idx = 0
         self.size = len(self.raw_data)
@@ -110,9 +135,9 @@ class LSLAM():
             H[0,1] += transformedPointData[1] * transformedPointData[2]
             H[0,2] += transformedPointData[1] * rotDeriv
             H[1,2] += transformedPointData[2] * rotDeriv
-        H[0,0] += 500
-        H[1,1] += 500
-        H[2,2] += 50
+        H[0,0] += w_x
+        H[1,1] += w_y
+        H[2,2] += w_a
         H[1,0] = H[0,1] 
         H[2,0] = H[0,2]
         H[2,1] = H[1,2]
@@ -146,15 +171,20 @@ class LSLAM():
         scan_fix = scan_fix.transpose()[:,0:2]
         return  map_idx, scan_fix
 
-bagreader = BagReader('h1.bag', 'scan', 'odom', 0, 800)
+#bagreader = BagReader('h1.bag', 'scan', 'odom', 0, 800)
+bagreader = BagReader(bagfile, scan_topic, odom_topic, start_time, end_time)
 #bagreader = BagReader('/home/liu/bag/test_range.bag', '/Rulo/laser_scan', '/Rulo/odom', 3, 800)
 #bagreader = BagReader('/home/liu/bag/h1.bag', '/Rulo/laser_scan', '/Rulo/odom', 45, 800)
-costmap = CostMap()        
+costmap = CostMap(size, original_point, resolution)        
 gui = LSLAMGUI()
 gui.start()
 lslam = LSLAM(bagreader.data, costmap, gui)
 start = time.time()
 lslam.run()
+import Image
+a = np.flip(costmap.prob_data,0)
+img = Image.fromarray(np.uint8(255-a*255))
+img.save(image_file_name)
 elapsed_time = time.time() - start
 print ("elapsed_time:{0}".format(elapsed_time)) + "[sec]"
 
